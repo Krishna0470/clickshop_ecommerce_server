@@ -1,31 +1,20 @@
-module.exports={
-  "development": {
-    "database": {
-      "url": "mongodb://localhost/mongoose_dev",
-      "options": {
-        "useNewUrlParser": true
-      }
-    }
-  },
-  "test": {
-    "database": {
-      "url": "mongodb://localhost/mongoose_test",
-      "options": {
-        "useNewUrlParser": true
-      }
-    }
-  },
-  "production": {
-    "database": {
-      "protocol": "mongodb",
-      "username": "root",
-      "password": "password",
-      "name": "database_production",
-      "host": "localhost",
-      "port": "",
-      "options": {
-        "useNewUrlParser": true
-      }
-    }
-  }
+const mongoose = require ('mongoose');
+const dotenv = require ('dotenv');
+const error = require('mongoose/lib/error');
+
+
+dotenv.config();
+ 
+const MONGODB_URL= process.env.MONGODB_URL;
+
+async function connect () {
+    await mongoose.connect(process.env.MONGODB_URL)
+    .then((message)=>{
+        console.log("Database connection established")
+    })
+    .catch((error)=>{
+        console.log("Database not connected:",error)
+    })
 }
+
+module.exports= connect;

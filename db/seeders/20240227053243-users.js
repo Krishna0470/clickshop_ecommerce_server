@@ -6,16 +6,14 @@ module.exports = {
     return models.users
     .insertMany([
       {
-        _id:"65dd74e1dd27c926301148",
-        personel_details :{
-          first_name:"Aswin",
-          last_name:"Ajith",
-          phone:"12324524",
+        _id:"65dda564c23086ab33b1e78c",
+          firstname:"Aswin",
+          lastname:"Ajith",
           email:"aswinajith@gmail.com",
-        },
+          password:"aswin123@ASD",
       }
     ])
-    .then(res=>{
+    .then((res)=>{
 
       console.log(res.insertMany)
     })
@@ -28,7 +26,7 @@ module.exports = {
       .deleteMany({
         _id: {
           $in:[
-            "65dd74e1dd27c926301148",
+            "65dda564c23086ab33b1e78c",
           ],
         },
       })
