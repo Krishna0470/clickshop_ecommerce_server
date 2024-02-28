@@ -10,7 +10,7 @@ module.exports = {
           firstname:"Aswin",
           lastname:"Ajith",
           email:"aswinajith@gmail.com",
-          password:"aswin123@ASD",
+          password:"$2a$12$oNAzpZpkL9iFLQKJ3n7uc.i4AINYCl7fJcuOMUUJRzBIRGVshmBG6"
       }
     ])
     .then((res)=>{
