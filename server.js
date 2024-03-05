@@ -24,16 +24,16 @@ app.get('/',(req,res)=>{
     res.status(200).send('Test API')
 });
 
-connect()
-    .then(() => {
-        app.listen(port, () => {
-            console.log(`Server is running on http://localhost:${port}`);
-        });
-    })
-    .catch((err) => {
-        console.error('Error connecting to the database:', err);
-    });
+// app.use(express.static(__dirname + "/../client"));
+
+app.use(express.urlencoded({extended : false}));
 
 
 
+
+connect();
+
+app.listen(port,()=>{
+    console.log(`server running at http://localhost:${port}`)
+  });
     

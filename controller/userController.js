@@ -46,33 +46,35 @@ async function createUser(req, res) {
     }
 }
 
-async function getUserData(req, res) {
+async function getUserData(req,res){
     try {
-        const allUsers = await users.find({});
+        let allUsers = await users.find({});
 
         if (allUsers.length > 0) {
-            const response = success_function({
-                statusCode: 200,
-                data: allUsers,
-                message: 'All users retrieved successfully',
+            let response = success_function({
+                statusCode : 200,
+                data : allUsers,
+                message : "All users retrieved successfully",
             });
             res.status(response.statusCode).send(response);
-        } else {
-            const response = error_function({
-                statusCode: 404,
-                message: 'No users found',
+        }else {
+            let response = error_function({
+                statusCode : 404 ,
+                message : "No users found",
             });
             res.status(response.statusCode).send(response);
+            return ;
         }
-    } catch (error) {
-        console.error('Error fetching user data:', error);
-        const response = error_function({
-            statusCode: 500,
-            message: 'Internal server error',
+    } catch(error) {
+        console.log ("error : ",error);
+
+        let response = error_function({
+            statusCode : 500,
+            message : "Internal server error",
         });
-        res.status(response.statusCode).send(response);
+        res.status(response.statusCode).send(response)
     }
-}
+} 
 
 module.exports = {
     createUser,
