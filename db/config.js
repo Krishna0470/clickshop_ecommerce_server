@@ -1,11 +1,10 @@
 const mongoose = require ('mongoose');
 const dotenv = require ('dotenv');
-const error = require('mongoose/lib/error');
+
 
 
 dotenv.config();
  
-const MONGODB_URL= process.env.MONGODB_URL;
 
 async function connect () {
     await mongoose.connect(process.env.MONGODB_URL)
