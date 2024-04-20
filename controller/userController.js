@@ -5,7 +5,7 @@ const error_function = require('../utils/response-handler').error_function ;
 const set_pass_template = require("../utils/email-templates/setPassword").resetPassword;
 const sendEmail = require ("../utils/send-email").sendEmail;
 const mongoose = require('mongoose');
-
+const fs = require("fs")
 
 
 function generateRandomPassword(length) {
@@ -111,50 +111,53 @@ async function getUserData(req,res){
         console.log("Page Number:", pageNumber);
         console.log("Page Size:", pageSize);
 
+        const search = req.query.search || '';
 
 
-        let allUsers = await users
-        .find({})
-        .skip(pageSize * (pageNumber - 1))
-        .limit(pageSize);
-        
+        let allUsers = await users.find({});
 
-        if (allUsers.length > 0) {
+        // .skip(pageSize * (pageNumber - 1))
+        // .limit(pageSize);
+        allUsers = allUsers.filter(user => 
+            user.firstname.toLowerCase().includes(search.toLowerCase()) || 
+            user.lastname.toLowerCase().includes(search.toLowerCase()) ||
+            user.email.toLowerCase().includes(search.toLowerCase())
+        );
 
-            let totalCount = await users.countDocuments();
-            let totalPages = Math.ceil(totalCount / pageSize);
 
-            let data = {
+         const startIndex = (pageNumber - 1) * pageSize;
+        const paginatedUsers = allUsers.slice(startIndex, startIndex + pageSize);
+
+        if (paginatedUsers.length > 0) {
+            const totalCount = allUsers.length;
+            const totalPages = Math.ceil(totalCount / pageSize);
+
+            const data = {
                 count: totalCount,
                 totalPages: totalPages,
                 currentPage: pageNumber,
-                datas: allUsers,
+                datas: paginatedUsers,
             };
 
-            let response = success_function({
-                statusCode : 200,
-                data : allUsers,
-                message : "All users retrieved successfully",
+            res.status(200).json({
+                statusCode: 200,
+                data: data,
+                message: "Users retrieved successfully",
             });
-            res.status(response.statusCode).send(response);
-        }else {
-            let response = error_function({
-                statusCode : 404 ,
-                message : "No users found",
+        } else {
+            res.status(404).json({
+                statusCode: 404,
+                message: "No users found",
             });
-            res.status(response.statusCode).send(response);
-            return ;
         }
-    } catch(error) {
-        console.log ("error : ",error);
-
-        let response = error_function({
-            statusCode : 500,
-            message : "Internal server error",
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({
+            statusCode: 500,
+            message: "Internal server error",
         });
-        res.status(response.statusCode).send(response)
     }
-} 
+}
 
 const getSingleUserData = async (req, res) => {
     try {
@@ -177,42 +180,119 @@ const getSingleUserData = async (req, res) => {
     }
   };
 
-  const updateUser = async (req , res)=>{
-    try{
-        const userId = req.params.id
+//   const updateUser = async (req , res)=>{
+//     try{
+//         const userId = req.params.id
 
-        const {firstname,lastname,email} = req.body;
+//         const {firstname,lastname,email} = req.body;
 
-        if(!userId || !mongoose.isValidObjectId(userId)){
-            return res.status(400).json({error : "invalid userId"})
+//         if(!userId || !mongoose.isValidObjectId(userId)){
+//             return res.status(400).json({error : "invalid userId"})
+//         }
+
+//         const user = await users.findById(userId);
+
+//         if(!user){
+//             let response = error_function({
+//                 statusCode: 400,
+//                 data: user,
+//                 message: "User Not Found",
+//             });
+//             res.status(response.statusCode).send(response);
+//             return; 
+//         }
+
+//         user.firstname = firstname || user.firstname;
+//         user.lastname = lastname || user.lastname ;
+//         user.email = email || user.email ;
+
+//         await user.save();
+
+//         res.json(user);
+
+//     }catch(error){
+//         console.error("error updating user : ",error);
+//         res.status(500).json({error : 'internal server error '})
+
+//     }
+//   }
+
+
+  const updateUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        const { firstname, lastname, email, profileImage, removeProfileImage } = req.body;
+
+        // console.log("ProfileImage : ",profileImage)
+
+        if (!userId || !mongoose.isValidObjectId(userId)) {
+            return res.status(400).json({ error: 'Invalid userId' });
         }
 
         const user = await users.findById(userId);
 
-        if(!user){
-            let response = error_function({
-                statusCode: 400,
-                data: user,
-                message: "User Not Found",
-            });
-            res.status(response.statusCode).send(response);
-            return; 
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
         }
 
         user.firstname = firstname || user.firstname;
-        user.lastname = lastname || user.lastname ;
-        user.email = email || user.email ;
+        user.lastname = lastname || user.lastname;
+        user.email = email || user.email;
 
-        await user.save();
+        if (removeProfileImage) {
+           
+            if (user.profileImage) {
+                
+                fs.unlink(user.profileImage, async (err) => {
+                    if (err) {
+                        console.error('Error deleting profile image:', err);
+                        return res.status(500).json({ error: 'Internal server error' });
+                    }
+                    user.profileImage = undefined;
+                    try {
+                        await user.save();
+                        return res.json(user);
+                    } catch (saveError) {
+                        console.error('Error saving user:', saveError);
+                        return res.status(500).json({ error: 'Internal server error' });
+                    }
+                });
+            } else {
+                return res.json(user);
+            }
+        } else if (profileImage) {
+            const base64Data = profileImage.replace(/^data:image\/\w+;base64,/, '');
+            const buffer = Buffer.from(base64Data, 'base64');
+            const imagePath = `uploads/profile_${userId}.jpg`;
 
-        res.json(user);
+            fs.writeFile(imagePath, buffer, async (err) => {
+                if (err) {
+                    console.error('Error saving profile image:', err);
+                    return res.status(500).json({ error: 'Internal server error' });
+                }
 
-    }catch(error){
-        console.error("error updating user : ",error);
-        res.status(500).json({error : 'internal server error '})
+                user.profileImage = imagePath;
 
+                try {
+                    await user.save();
+                    return res.json(user);
+                } catch (saveError) {
+                    console.error('Error saving user:', saveError);
+                    return res.status(500).json({ error: 'Internal server error' });
+                }
+            });
+        } else {
+            // If no profile image changes were requested, simply save the user object
+            await user.save();
+            return res.json(user);
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
-  }
+};
+
 
   const deleteUser = async (req, res) => {
     try {

@@ -59,7 +59,9 @@ exports.login = async function (req,res){
                 statusCode : 200,
                 data : access_token,
                 user_type: user_type,
-                message : "Login successful"
+                message : "Login successful",
+                user_id:user._id,
+
 
             });
             res.status(response.statusCode).send(response);
@@ -291,3 +293,37 @@ exports.passwordResetController = async function (req,res){
 
     }
 }
+
+let revokedTokens = [];
+
+exports.logout = async function(req, res) {
+    try {
+        const authHeader = req.headers["authorization"];
+        const token = authHeader.split(" ")[1];
+
+        if (revokedTokens.includes(token)) {
+            const response = error_function({
+                statusCode: 400,
+                message: "Token has already been revoked"
+            });
+            res.status(response.statusCode).send(response);
+            return;
+        }
+
+        revokedTokens.push(token);
+        console.log(revokedTokens)
+
+        const response = success_function({
+            statusCode: 200,
+            message: "Logout successful"
+        });
+        res.status(response.statusCode).send(response);
+    } catch (error) {
+        const response = error_function({
+            statusCode: 500,
+            message: "Internal server error"
+        });
+        res.status(response.statusCode).send(response);
+    }
+};
+

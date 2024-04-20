@@ -53,6 +53,7 @@ exports.accessControl = async function (access_types, req, res, next) {
                             
                             
                             if (allowed && allowed.includes(user_type)) {
+                                
                                 // let revoked = await authController.checkRevoked(req, res);
                                 next();
                                 
