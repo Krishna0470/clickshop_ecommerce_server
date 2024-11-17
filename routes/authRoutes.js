@@ -10,7 +10,7 @@ const setAccessControl = (access_type) => {
     }
 };
 
-router.post('/login', setAccessControl('*'), authController.login);
+router.post('/Signin', setAccessControl('*'), authController.login);
 router.post('/forgot-password', setAccessControl('*'), authController.forgotPasswordController);
 router.patch('/reset-password',setAccessControl('*'),authController.passwordResetController);
 router.post('/logout',setAccessControl('*'),authController.logout)

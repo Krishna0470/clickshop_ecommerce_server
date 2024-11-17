@@ -10,92 +10,80 @@ dotenv.config();
 
 
 
-exports.login = async function (req,res){
+exports.login = async function (req, res) {
     try {
         let email = req.body.email;
         console.log("email : ", email);
 
-       let password =req.body.password;
-       console.log("password : ", password);
+        let password = req.body.password;
+        console.log("password : ", password);
 
-       
-
-       if(!email) {
-        let response = error_function({
-            statusCode : 400,
-            message : "email is Required"
-        });
-        res.status(response.statusCode).send(response);
-        return;
-       }
-       if (!password) {
-        let response = error_function({
-            statusCode : 400,
-            message : "Password is Required"
-        });
-        res.status(response.statusCode).send(response);
-        return;
-       }
-       let user = await users.findOne({ email });
-       console.log("user : ",user)
-
-       if (user) {
-
-        let db_password = user.password;
-
-        console.log("db_password : ",db_password);
-
-        bcrypt.compare(password, db_password, (err, auth) => {
-
-            if (auth === true) {
-
-                
-            let access_token = jwt.sign({user_id : user._id},process.env.PRIVATE_KEY,{expiresIn : "1d"});
-            console.log("access_token : ", access_token);
-
-            let user_type = user.user_type ;
-
-            let response = success_function({
-                statusCode : 200,
-                data : access_token,
-                user_type: user_type,
-                message : "Login successful",
-                user_id:user._id,
-
-
+        if (!email) {
+            let response = error_function({
+                statusCode: 400,
+                message: "email is Required"
             });
             res.status(response.statusCode).send(response);
             return;
-            
-            }else {
+        }
+        if (!password) {
             let response = error_function({
-                statusCode : 400,
-                message : "Invalid password"
+                statusCode: 400,
+                message: "Password is Required"
             });
             res.status(response.statusCode).send(response);
-            return
+            return;
         }
-        });
-        
+        let user = await users.findOne({ email });
+        console.log("user : ", user)
+
+        if (user) {
+            let db_password = user.password;
+
+            console.log("db_password : ", db_password);
+
+            bcrypt.compare(password, db_password, (err, auth) => {
+                if (auth === true) {
+                    let access_token = jwt.sign({ user_id: user._id }, process.env.PRIVATE_KEY, { expiresIn: "1d" });
+                    console.log("access_token : ", access_token);
+
+                    let user_type = user.user_type;
+                    let type = user.type;
+
+                    let response = success_function({
+                        statusCode: 200, // Set the status code to 200 for success
+                        data: access_token,
+                        user_type: user_type,
+                        type: type,
+                        message: "Login successful",
+                        user_id: user._id,
+                    });
+                    res.status(response.statusCode).send(response);
+                } else {
+                    let response = error_function({
+                        statusCode: 400,
+                        message: "Invalid password"
+                    });
+                    res.status(response.statusCode).send(response);
+                }
+            });
         } else {
             let response = error_function({
                 statusCode: 400,
                 message: "User not found"
             });
             res.status(response.statusCode).send(response);
-            return;
         }
-    }catch (error) {
-        console.log("error : ",error);
+    } catch (error) {
+        console.log("error : ", error);
         let response = error_function({
-            statusCode : 400,
-            message : error.message ? error.message : error,
+            statusCode: 400,
+            message: error.message ? error.message : error,
         });
-       res.status(response.statusCode).send(response);
-       return;
-
+        res.status(response.statusCode).send(response);
     }
 }
+
 
 
 exports.forgotPasswordController = async function (req,res) {
@@ -123,7 +111,7 @@ exports.forgotPasswordController = async function (req,res) {
             if(data.matchedCount === 1 && data.modifiedCount == 1 ){
 
                 let reset_link = `${process.env.FRONTEND_URL}reset-password?token=${reset_token}`
-                let email_template = await resetPassword(user.firstname,reset_link);
+                let email_template = await resetPassword(user.username,reset_link);
                 sendEmail(email,"Forgot Password",email_template);
 
                 let response = success_function({

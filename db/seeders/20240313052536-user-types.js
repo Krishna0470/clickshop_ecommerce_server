@@ -10,7 +10,7 @@ module.exports = {
       },
       {
         _id : "65f3d65961496a1395461cf1",
-        user_type : "employee"
+        user_type : "user"
       }
     ])
     .then((res) =>{

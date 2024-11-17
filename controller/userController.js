@@ -1,4 +1,5 @@
 const users = require('../db/models/users');
+const products = require('../db/models/Product');
 const bcrypt = require('bcryptjs');
 const success_function = require('../utils/response-handler').success_function ;
 const error_function = require('../utils/response-handler').error_function ;
@@ -22,12 +23,12 @@ function generateRandomPassword(length) {
 
 async function createUser (req,res) {
     try {
-        let firstname = req.body.firstname ;
-        let lastname = req.body.lastname;
+        let username = req.body.username ;
         let email = req.body.email;
+        let type = req.body.type;
         let password = generateRandomPassword(12);
 
-        console.log("name : ",firstname)
+        console.log("name : ",username)
 
         let userFound =await users.findOne({email});
 
@@ -46,16 +47,16 @@ async function createUser (req,res) {
         let hashed_password = bcrypt.hashSync(password,salt);
 
         let new_user = await users.create ({
-            firstname,
-            lastname,
+            username,
             email,
+            type,
             password : hashed_password,
             user_type : "65f3d65961496a1395461cf1"
         });
 
 
         if (new_user) {
-            let emailContent = await set_pass_template(firstname,email,password);
+            let emailContent = await set_pass_template(username,email,password);
 
             await sendEmail(email, "set your password",emailContent);
             console.log("Reached sendEmail ");
@@ -63,9 +64,9 @@ async function createUser (req,res) {
 
             let response_datas = {
                 _id : new_user._id,
-                firstname : new_user.firstname,
-                lastname : new_user.lastname,
+                username : new_user.username,
                 email : new_user.email,
+                type:new_user.type,
                 user_type : "65f3d65961496a1395461cf1"
                
             }
@@ -119,8 +120,7 @@ async function getUserData(req,res){
         // .skip(pageSize * (pageNumber - 1))
         // .limit(pageSize);
         allUsers = allUsers.filter(user => 
-            user.firstname.toLowerCase().includes(search.toLowerCase()) || 
-            user.lastname.toLowerCase().includes(search.toLowerCase()) ||
+            user.username.toLowerCase().includes(search.toLowerCase()) || 
             user.email.toLowerCase().includes(search.toLowerCase())
         );
 
@@ -222,7 +222,7 @@ const getSingleUserData = async (req, res) => {
     try {
         const userId = req.params.id;
 
-        const { firstname, lastname, email, profileImage, removeProfileImage } = req.body;
+        const { username, email, profileImage, removeProfileImage } = req.body;
 
         // console.log("ProfileImage : ",profileImage)
 
@@ -236,8 +236,7 @@ const getSingleUserData = async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        user.firstname = firstname || user.firstname;
-        user.lastname = lastname || user.lastname;
+        user.username = username || user.username;
         user.email = email || user.email;
 
         if (removeProfileImage) {
@@ -317,6 +316,157 @@ const getSingleUserData = async (req, res) => {
     }
 }
 
+// Add a product to the user's cart
+const addItemToCart = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { productId, quantity } = req.body;
+
+        if (!userId || !mongoose.isValidObjectId(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+
+        const user = await users.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const existingCartItem = user.cart.find(item => item.product.toString() === productId);
+        if (existingCartItem) {
+            existingCartItem.quantity += quantity;
+        } else {
+            user.cart.push({ product: productId, quantity });
+        }
+
+        await user.save();
+
+        return res.json({ message: 'Item added to cart successfully', cart: user.cart });
+    } catch (error) {
+        console.error("Error adding item to cart:", error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+// Add a product to the user's favorite list
+const addToFavorites = async (req, res) => {
+    const userId = req.params.id;
+    const { productId } = req.body;
+
+    try {
+        // Validate ObjectIds
+        if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ success: false, message: 'Invalid userId or productId' });
+        }
+
+        // Find the user
+        const user = await users.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Find the product
+        const product = await products.findById(productId);
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+
+        // Check if the product is already in the favorites
+        const existingFavorite = user.favorite.find(fav => fav.product.toString() === productId);
+        if (existingFavorite) {
+            return res.status(400).json({ success: false, message: 'Product is already in favorites' });
+        }
+
+        // Add the product to favorites with image URL, name, and price
+        user.favorite.push({
+            product: productId,
+            quantity: 1,
+            productImage: product.productImages[0], // Assuming the first image is the main image
+            name: product.name, // Add product name
+            price: product.price // Add product price
+        });
+
+        // Save the updated user document
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Product added to favorites' });
+    } catch (error) {
+        console.error('Error adding to favorites:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+
+
+
+
+const removeFromFavorites = async (req, res) => {
+    try {
+        const userId = req.params.id; // The user ID from the URL
+        const { favoriteId } = req.body; // The ID of the favorite item to remove from the request body
+
+        if (!userId || !mongoose.isValidObjectId(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+        if (!favoriteId || !mongoose.isValidObjectId(favoriteId)) {
+            return res.status(400).json({ error: 'Invalid favorite item ID' });
+        }
+
+        const user = await users.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Find the index of the favorite item to be removed using favoriteId
+        const favoriteIndex = user.favorite.findIndex(item => item._id.toString() === favoriteId);
+
+        if (favoriteIndex === -1) {
+            return res.status(404).json({ error: 'Favorite item not found' });
+        }
+
+        // Remove the item from the favorites list
+        user.favorite.splice(favoriteIndex, 1);
+
+        // Save the updated user document
+        await user.save();
+
+        return res.json({ message: 'Item removed from favorites successfully', favorite: user.favorite });
+    } catch (error) {
+        console.error("Error removing item from favorites:", error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+
+  
+
+
+const getFavoriteItems = async (req, res) => {
+    try {
+      const userId = req.params.id; // The user ID from the URL
+      console.log('Received user ID:', userId);
+  
+      // Validate the user ID
+      if (!userId || !mongoose.isValidObjectId(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+  
+      const user = await users.findById(userId).populate('favorite.product'); // Populate product details
+  
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      // Return the favorite items
+      return res.json({ message: 'Favorite items retrieved successfully', favoriteItems: user.favorite });
+    } catch (error) {
+      console.error("Error retrieving favorite items:", error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+  
+
+  
+
   
 
 
@@ -326,4 +476,8 @@ module.exports = {
     getSingleUserData,
     updateUser,
     deleteUser,
+    addItemToCart,
+    addToFavorites,
+    getFavoriteItems,
+    removeFromFavorites,
 }

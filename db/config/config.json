@@ -1,7 +1,7 @@
 {
   "development": {
     "database": {
-      "url": "mongodb://127.0.0.1:27017/hrm",
+      "url": "mongodb://127.0.0.1:27017/proj",
       "options": {
         "useNewUrlParser": true
       }
